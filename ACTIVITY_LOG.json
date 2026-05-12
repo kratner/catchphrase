@@ -1,0 +1,113 @@
+{
+  "project": "catchphrase_compilation",
+  "last_updated": "2026-05-12T03:10:00Z",
+  "phrase": "permission structure",
+  "activities": [
+    {
+      "id": "ihip_news_search_20260512",
+      "channel": "IHIP News",
+      "channel_url": "https://www.youtube.com/@IHIPNews",
+      "status": "completed",
+      "start_date": "2026-05-12",
+      "completion_date": "2026-05-12",
+      "execution_notes": "Fresh comprehensive search on all 2,663 existing transcripts",
+      "results": {
+        "total_videos_in_channel": 2663,
+        "videos_with_phrase": 85,
+        "total_hits": 213,
+        "vtt_duplicates_found": 0,
+        "unique_clips_after_dedup": 213
+      },
+      "output_files": {
+        "search_results": "catchphrase_output/vtt_search_results_fresh_3week.json",
+        "search_log": "catchphrase_output/SEARCH_LOG.json"
+      },
+      "supercuts_generated": [
+        {
+          "name": "biweekly_supercut",
+          "date_range": "2026-04-21 to 2026-05-12",
+          "status": "complete_and_valid",
+          "clips": 20,
+          "duration": "1m 45s",
+          "file_size_mb": 19.5,
+          "padding_seconds": 2,
+          "video_quality": "av1 (1920x1080, 29.97 fps)",
+          "location": "catchphrase_output/clips_biweekly/biweekly_supercut.mp4",
+          "validation": "verified with ffmpeg - contains valid video and audio streams"
+        }
+      ]
+    },
+    {
+      "id": "3week_supercut_20260512",
+      "channel": "IHIP News",
+      "status": "prepared_not_executed",
+      "date_range": "2026-04-21 to 2026-05-12",
+      "execution_notes": "Search results prepared and deduplicated. Video downloads blocked by YouTube rate limiting.",
+      "blocker": {
+        "type": "youtube_rate_limiting",
+        "description": "After ~20 successful video downloads for biweekly supercut, YouTube began rate-limiting requests. Subsequent attempts to download additional videos all failed with empty/corrupted files.",
+        "affected_operations": ["yt-dlp video downloads", "transcript downloads"],
+        "expected_resolution": "24-48 hours from 2026-05-12 ~12:00 UTC",
+        "workaround": "Use VPN with different exit IP (may violate YouTube ToS)"
+      },
+      "prepared_deliverables": {
+        "search_results": "catchphrase_output/clips_3week_2026-04-21_to_2026-05-12/vtt_search_results_dedup.json",
+        "output_folder": "catchphrase_output/clips_3week_2026-04-21_to_2026-05-12/",
+        "sample_selection": "71 clips from 59 videos (every 3rd clip for manageable scope)"
+      },
+      "next_steps": [
+        "Wait for YouTube rate limit to clear (retry after 2026-05-14)",
+        "Run: python3 clip_downloader.py with RESULTS_JSON pointing to vtt_search_results_dedup.json",
+        "Set CLIP_PADDING to 2 seconds",
+        "Download and trim clips, then build supercut with ffmpeg"
+      ]
+    },
+    {
+      "id": "adammockler_search_20260512",
+      "channel": "@adammockler",
+      "channel_url": "https://www.youtube.com/@adammockler",
+      "status": "paused_rate_limited",
+      "execution_notes": "Channel identified with 4,150 videos. Transcript download started but immediately rate-limited by YouTube.",
+      "blocker": {
+        "type": "youtube_rate_limiting",
+        "description": "Could not download transcripts. Rate limit applies to all YouTube operations (affects both IHIP News continuation and this new channel).",
+        "expected_resolution": "24-48 hours from 2026-05-12 ~12:00 UTC"
+      },
+      "channel_stats": {
+        "total_videos": 4150,
+        "transcripts_downloaded": 1,
+        "transcripts_target_location": "catchphrase_output/adammockler_search/transcripts"
+      },
+      "next_steps": [
+        "Wait for rate limit to clear",
+        "Download full transcript set for @adammockler channel (4,150 videos)",
+        "Run vtt_search.py on @adammockler transcripts looking for 'permission structure'",
+        "Deduplicate results",
+        "Download clips with 2-second padding",
+        "Build supercut"
+      ]
+    }
+  ],
+  "environment": {
+    "python_version": "3.11",
+    "tools": {
+      "yt_dlp": "latest",
+      "ffmpeg": "7.1.1",
+      "ffprobe": "included_with_ffmpeg"
+    },
+    "dependencies": [
+      "rich",
+      "json (stdlib)"
+    ]
+  },
+  "rate_limit_status": {
+    "as_of": "2026-05-12T03:00:00Z",
+    "current_ip_blocked": true,
+    "YouTube_operations_blocked": [
+      "video downloads",
+      "transcript downloads"
+    ],
+    "estimated_reset_time": "2026-05-14T00:00:00Z",
+    "notes": "All YouTube operations from this IP are rate-limited. Using VPN to rotate IP would bypass but may violate ToS."
+  }
+}
