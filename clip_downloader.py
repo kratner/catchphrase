@@ -45,9 +45,9 @@ console = Console()
 # ─────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────
-RESULTS_JSON   = "./catchphrase_output/results_*.json"  # glob — picks latest
+RESULTS_JSON   = "./catchphrase_output/vtt_search_results_*.json"  # glob — picks latest
 OUTPUT_DIR     = "./catchphrase_output/clips"
-CLIP_PADDING   = 4          # seconds before/after the hit
+CLIP_PADDING   = 2          # seconds before/after the hit
 VIDEO_QUALITY  = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
 BUILD_SUPERCUT = True       # stitch approved clips into one file at the end
 SUPERCUT_NAME  = "supercut.mp4"
