@@ -118,11 +118,34 @@ and optionally stitches them into a supercut.
 ```python
 RESULTS_JSON   = "./catchphrase_output/vtt_search_results_*.json"  # auto-picks latest
 OUTPUT_DIR     = "./catchphrase_output/clips"
-CLIP_PADDING   = 4        # seconds before/after hit
+CLIP_PADDING   = 4        # seconds before/after hit (CUSTOMIZE BEFORE RUNNING)
 VIDEO_QUALITY  = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
 BUILD_SUPERCUT = True
 SUPERCUT_NAME  = "supercut.mp4"
 SKIP_EXISTING  = True     # won't re-download clips already on disk
+```
+
+**⭐ IMPORTANT: Choose clip padding before running**
+
+Before running `clip_downloader.py`, decide how much context to keep around each phrase:
+- **0s** → just the phrase (very tight, may feel abrupt)
+- **1s** → minimal context (tight)
+- **2s** → modest context (recommended for cleaner supercuts)
+- **3s** → moderate context
+- **4s+** → more context (default, good for understanding context)
+
+Edit `CLIP_PADDING` at the top of `clip_downloader.py` or override it when running:
+```python
+import clip_downloader
+clip_downloader.CLIP_PADDING = 2  # your chosen value
+clip_downloader.main()
+```
+
+**Recommended workflow:**
+```bash
+# After vtt_search.py completes, ask yourself:
+# "How much context do I want around each phrase?"
+# Then edit CLIP_PADDING before running clip_downloader
 ```
 
 > After running `vtt_search.py`, update `RESULTS_JSON` to point at the
