@@ -68,6 +68,11 @@ at the moment the script ends. If the channel is large (2,000+ videos),
 the JSON may show 0 hits even when VTT files contain matches. Always
 follow up with `vtt_search.py` to search the full transcript folder.
 
+**VTT duplication:** YouTube's `.vtt` format repeats caption blocks. Even after
+deduplication at parse time, the search may find the same phrase occurrence
+multiple times with slightly different timestamp windows. This is expected and
+can be cleaned up post-search (see "Deduplication" section below).
+
 **Run:**
 ```bash
 python3 catchphrase_finder.py
@@ -183,6 +188,60 @@ python3 vtt_search.py
 # 4. Review the TXT report, then download and compile clips
 python3 clip_downloader.py
 ```
+
+---
+
+## Deduplication (Post-Search)
+
+After running `vtt_search.py`, you may have duplicate or near-duplicate hits from
+the same occurrence captured at different timestamp boundaries due to VTT format quirks.
+
+**To deduplicate:**
+
+1. Load the `vtt_search_results_*.json` file
+2. Group hits by video ID
+3. For each video, cluster hits that overlap or are within 2 seconds of each other
+4. Keep only the longest/most comprehensive hit from each cluster
+5. Save as a new deduplicated JSON
+6. Run `clip_downloader.py` with the deduplicated JSON
+
+**Example Python deduplication:**
+```python
+import json
+from pathlib import Path
+
+# Load search results
+results_file = Path('catchphrase_output/vtt_search_results_*.json')
+with open(results_file) as f:
+    results = json.load(f)
+
+def cluster_overlapping_hits(hits):
+    hits = sorted(hits, key=lambda h: h['start_sec'])
+    clusters = []
+    current_cluster = [hits[0]]
+    for hit in hits[1:]:
+        cluster_end = max(h['end_sec'] for h in current_cluster)
+        if hit['start_sec'] <= cluster_end + 2:
+            current_cluster.append(hit)
+        else:
+            clusters.append(current_cluster)
+            current_cluster = [hit]
+    clusters.append(current_cluster)
+    return clusters
+
+# Deduplicate each video's hits
+for video in results:
+    clusters = cluster_overlapping_hits(video['hits'])
+    video['hits'] = [max(c, key=lambda h: h['end_sec'] - h['start_sec']) 
+                     for c in clusters]
+
+# Save deduplicated results
+with open('catchphrase_output/vtt_search_results_dedup.json', 'w') as f:
+    json.dump(results, f, indent=2)
+```
+
+**Impact:** Typical reduction is 50-70% of hits, resulting in a cleaner, more concise supercut
+without redundant occurrences of the same phrase moment.
 
 ---
 

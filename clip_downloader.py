@@ -381,10 +381,10 @@ def main():
         sys.exit(0)
 
     # Confirm padding
+    global CLIP_PADDING
     console.print(f"\n[dim]Clip padding: [bold]{CLIP_PADDING}s[/bold] before and after each hit.[/dim]")
     change = Confirm.ask("[cyan]Change padding?[/cyan]", default=False)
     if change:
-        global CLIP_PADDING
         CLIP_PADDING = IntPrompt.ask("[cyan]Padding in seconds[/cyan]", default=4)
 
     # Setup output

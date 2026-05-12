@@ -11,6 +11,13 @@ A YouTube channel scanner that finds every instance of a spoken phrase and compi
 
 ## Quick Start
 
+**Typical Workflow:**
+1. Download transcripts from your channel
+2. Search for phrase
+3. ⭐ **Deduplicate** search results (removes ~50-70% of VTT artifacts)
+4. Download and compile clips
+5. Review supercut
+
 ### 1. Install Dependencies
 
 ```bash
