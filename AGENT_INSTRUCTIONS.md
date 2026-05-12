@@ -31,13 +31,19 @@ cat ACTIVITY_LOG.json | jq '.rate_limit_status'
 
 ### 3. Resume IHIP News 3-Week Supercut (once rate limit clears)
 
-**Step 1: Download clips**
+**Before starting:** Update yt-dlp to latest version
+```bash
+yt-dlp -U
+```
+
+**Step 1: Download clips (with rate-limit prevention)**
 ```bash
 python3 << 'EOF'
 import json
 import subprocess
 from pathlib import Path
 import os
+import time
 
 # Configuration from ACTIVITY_LOG
 source_json = "./catchphrase_output/clips_3week_2026-04-21_to_2026-05-12/vtt_search_results_dedup.json"
@@ -56,7 +62,8 @@ for video in results:
             'end_sec': hit['end_sec']
         })
 
-print(f"Downloading {len(clips)} clips with {clip_padding}s padding...\n")
+print(f"Downloading {len(clips)} clips with {clip_padding}s padding")
+print(f"Using 15s sleep between downloads to avoid rate limiting\n")
 
 downloaded = []
 for idx, clip in enumerate(clips, 1):
@@ -75,21 +82,42 @@ for idx, clip in enumerate(clips, 1):
         continue
     
     url = f"https://www.youtube.com/watch?v={video_id}"
-    cmd = ["yt-dlp", "-f", "best[ext=mp4]", "-o", str(output_path), url]
+    # Use --cookies-from-browser for authenticated session (higher rate limit)
+    # Use --sleep-interval 15 to wait 15 seconds between downloads
+    cmd = [
+        "yt-dlp",
+        "--cookies-from-browser", "chrome",  # or firefox, safari, edge
+        "--sleep-interval", "15",
+        "-f", "best[ext=mp4]",
+        "-o", str(output_path),
+        url
+    ]
     
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=180)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
         if output_path.exists() and output_path.stat().st_size > 100000:
             if idx % 50 == 1:
                 print(f"[{idx}/{len(clips)}] ✓")
             downloaded.append(str(output_path))
-    except:
+        else:
+            if idx % 50 == 1:
+                print(f"[{idx}/{len(clips)}] ✗")
+    except subprocess.TimeoutExpired:
         if idx % 50 == 1:
-            print(f"[{idx}/{len(clips)}] ✗")
+            print(f"[{idx}/{len(clips)}] ✗ (timeout)")
+    except Exception as e:
+        if idx % 50 == 1:
+            print(f"[{idx}/{len(clips)}] ✗ ({str(e)[:30]})")
 
 print(f"\nDownloaded {len(downloaded)} clips")
 EOF
 ```
+
+**Rate Limit Notes:**
+- Guest sessions: ~300 videos/hour
+- Authenticated sessions (with cookies): ~2000 videos/hour
+- `--cookies-from-browser`: Extracts cookies from logged-in browser (Chrome/Firefox/Safari/Edge)
+- `--sleep-interval 15`: Waits 15 seconds between downloads (mimic human behavior)
 
 **Step 2: Build supercut**
 ```bash
@@ -105,12 +133,16 @@ ffmpeg -f concat -safe 0 -i concat.txt -c copy -y supercut.mp4
 
 ### 4. Start @adammockler Search (once rate limit clears)
 
-**Step 1: Download transcripts**
+**Step 1: Download transcripts (with rate-limit prevention)**
 ```bash
+# First, update yt-dlp
+yt-dlp -U
+
 python3 << 'EOF'
 import subprocess
 import json
 from pathlib import Path
+import time
 
 output_base = "./catchphrase_output/adammockler_search"
 transcripts_dir = Path(output_base) / "transcripts"
@@ -132,6 +164,9 @@ for line in result.stdout.strip().split('\n'):
             pass
 
 print(f"Found {len(videos)} videos\n")
+print("Downloading transcripts with rate-limit prevention:")
+print("- Using authenticated cookies (higher limit ~2000/hour vs 300/hour guest)")
+print("- 20s sleep between subtitle requests\n")
 
 # Download transcripts
 downloaded = 0
@@ -143,17 +178,26 @@ for idx, video_id in enumerate(videos, 1):
         continue
     
     url = f"https://www.youtube.com/watch?v={video_id}"
-    cmd = ["yt-dlp", "--write-auto-subs", "--sub-langs", "en", "--skip-download", 
-           "-o", str(transcripts_dir / "%(id)s"), url]
+    cmd = [
+        "yt-dlp",
+        "--cookies-from-browser", "chrome",  # or firefox, safari, edge
+        "--write-auto-subs",
+        "--sub-langs", "en",
+        "--sleep-subtitles", "20",  # 20 seconds between subtitle requests
+        "--skip-download",
+        "-o", str(transcripts_dir / "%(id)s"),
+        url
+    ]
     
     try:
-        subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
         if transcript_path.exists():
             downloaded += 1
             if idx % 100 == 0:
                 print(f"[{idx}/{len(videos)}] ✓ {downloaded} transcripts")
     except:
-        pass
+        if idx % 100 == 0:
+            print(f"[{idx}/{len(videos)}] ✗")
 
 print(f"\nDownloaded {downloaded}/{len(videos)} transcripts")
 EOF
@@ -181,18 +225,34 @@ python3 vtt_search.py
 
 ## Troubleshooting
 
-**If downloads fail with "no stream" errors:**
-- Check rate limit status: `cat ACTIVITY_LOG.json | jq '.rate_limit_status'`
-- Wait 24-48 hours and retry
-- Alternative: Use VPN with different exit IP (caveat: may violate YouTube ToS)
+**If downloads fail (HTTP 429, empty files, "no stream" errors):**
+
+YouTube rate limiting detected. Guest sessions limited to ~300 videos/hour.
+
+*Immediate fixes:*
+- Wait 15-60 minutes (usually resets in 15-60 min, worst case 24 hours)
+- Update yt-dlp: `yt-dlp -U`
+- Use cookies from logged-in browser: `--cookies-from-browser chrome` (raises limit to ~2000/hour)
+- Add sleep delays: `--sleep-interval 15` (between downloads) or `--sleep-subtitles 20` (between subtitles)
+
+*If still failing:*
+- Switch VPN to different exit IP (caveat: may violate YouTube ToS)
+- Check browser is logged into YouTube before using `--cookies-from-browser`
 
 **If transcripts won't download:**
-- Same as above — YouTube rate limiting
-- Must wait or use VPN
+- Same as above — YouTube rate limiting applies to transcripts too
+- Use `--sleep-subtitles 20` for transcript-specific throttling
+- Must wait or use authenticated cookies
 
 **If ffmpeg concat fails:**
 - Ensure all .mp4 files are valid: `ffmpeg -i <file.mp4>` (should show Duration and streams)
 - Verify concat.txt format: each line should be `file '/path/to/clip.mp4'`
+- All files must be from same source (same video codec) for concat demuxer
+
+**Rate limit reference:**
+- Guest session: ~300 videos/hour
+- Authenticated session: ~2000 videos/hour (use `--cookies-from-browser`)
+- Sleep between requests mitigates but doesn't eliminate limits
 
 ---
 
