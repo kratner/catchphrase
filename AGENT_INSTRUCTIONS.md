@@ -31,12 +31,17 @@ cat ACTIVITY_LOG.json | jq '.rate_limit_status'
 
 ### 3. Resume IHIP News 3-Week Supercut (once rate limit clears)
 
-**Before starting:** Update yt-dlp to latest version
+**Before starting:** 
 ```bash
-yt-dlp -U
+# Update yt-dlp to latest version
+pip install --upgrade yt-dlp
+
+# Verify Node.js is installed (required for JavaScript n-challenge solving)
+which node  # should return path like /usr/bin/node or /usr/local/bin/node
+node --version  # should show v14+
 ```
 
-**Step 1: Download clips (with rate-limit prevention)**
+**Step 1: Download clips (with JavaScript challenge solver and rate-limit prevention)**
 ```bash
 python3 << 'EOF'
 import json
@@ -82,12 +87,15 @@ for idx, clip in enumerate(clips, 1):
         continue
     
     url = f"https://www.youtube.com/watch?v={video_id}"
-    # Use --cookies-from-browser for authenticated session (higher rate limit)
-    # Use --sleep-interval 15 to wait 15 seconds between downloads
+    # Get Node.js path for JavaScript challenge solving
+    node_path = subprocess.run(["which", "node"], capture_output=True, text=True).stdout.strip()
+    
     cmd = [
         "yt-dlp",
-        "--cookies-from-browser", "chrome",  # or firefox, safari, edge
-        "--sleep-interval", "15",
+        "--js-runtimes", f"node:{node_path}",  # Use Node.js for n-challenge solving
+        "--remote-components", "ejs:github",  # Download challenge solver from GitHub
+        "--cookies-from-browser", "chrome",  # or firefox, safari, edge (higher rate limit)
+        "--sleep-interval", "15",  # Wait 15 seconds between downloads
         "-f", "best[ext=mp4]",
         "-o", str(output_path),
         url
@@ -178,8 +186,13 @@ for idx, video_id in enumerate(videos, 1):
         continue
     
     url = f"https://www.youtube.com/watch?v={video_id}"
+    # Get Node.js path for JavaScript challenge solving
+    node_path = subprocess.run(["which", "node"], capture_output=True, text=True).stdout.strip()
+    
     cmd = [
         "yt-dlp",
+        "--js-runtimes", f"node:{node_path}",  # Use Node.js for n-challenge solving
+        "--remote-components", "ejs:github",  # Download challenge solver from GitHub
         "--cookies-from-browser", "chrome",  # or firefox, safari, edge
         "--write-auto-subs",
         "--sub-langs", "en",
@@ -225,7 +238,22 @@ python3 vtt_search.py
 
 ## Troubleshooting
 
-**If downloads fail (HTTP 429, empty files, "no stream" errors):**
+**If downloads fail with "n challenge solving failed" error:**
+
+YouTube is blocking the download with an anti-bot n-parameter challenge that requires JavaScript runtime to solve.
+
+*Solution:*
+1. Ensure Node.js is installed: `which node` (if not, install via `brew install node`)
+2. Add these flags to yt-dlp commands:
+   ```
+   --js-runtimes node:/path/to/node
+   --remote-components ejs:github
+   ```
+3. These flags enable JavaScript challenge solving (first run downloads the solver from GitHub)
+
+This is **NOT** the same as rate limiting—this is a permanent anti-bot measure that requires these flags.
+
+**If downloads fail with HTTP 429, empty files, or missing formats:**
 
 YouTube rate limiting detected. Guest sessions limited to ~300 videos/hour.
 
